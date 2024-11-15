@@ -1,0 +1,6 @@
+.streamlit/secrets.toml
+*.pyc
+__pycache__/
+.venv/
+service_account.json
+gscservice_account.json
