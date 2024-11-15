@@ -22,7 +22,7 @@ def make_sidebar():
         st.write("")
 
         if st.session_state.get("logged_in", False):
-            st.page_link("pages/about.py", label="Your Profile", icon=":material/account_circle:")
+            st.page_link("pages/about.py", label="Overview", icon=":material/account_circle:")
             st.page_link("pages/ga4api.py", label="Performance Dashboard", icon=":material/bar_chart:")
 
             st.write("")
