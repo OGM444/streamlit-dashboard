@@ -31,11 +31,17 @@ st.divider()
 # Google Analytics property ID
 property_id = "389980673"
 
-# Date range input
+
+
+# Date range sidebar
 start_date_1 = st.sidebar.date_input("Start date of current month", pd.to_datetime("2024-01-18"))
 end_date_1 = st.sidebar.date_input("End date of current month", pd.to_datetime("today"))
 start_date_2 = st.sidebar.date_input("Start date of month to compare", pd.to_datetime("2024-01-18"))
 end_date_2 = st.sidebar.date_input("End date of month to compare", pd.to_datetime("today"))
+
+
+
+# Date Sales data
 
 def fetch_sales_data(date_range, date_label):
     request = RunReportRequest(
@@ -60,7 +66,7 @@ def fetch_sales_data(date_range, date_label):
             'Product': row.dimension_values[0].value,
             'Category': row.dimension_values[1].value,
             'Views': int(row.metric_values[0].value),
-            'Units Sold': int(row.metric_values[1].value),
+            'Items Sold': int(row.metric_values[1].value),
             'Revenue': float(row.metric_values[2].value),
             'Conversion Rate': float(row.metric_values[3].value) * 100
         })
@@ -79,35 +85,59 @@ combined_data += fetch_sales_data(
 # Create DataFrame for combined sales data
 df_combined = pd.DataFrame(combined_data)
 
+def fetch_sales_data(date_range, date_label):
+    request = RunReportRequest(
+        property=f"properties/{property_id}",
+        dimensions=[
+            Dimension(name="itemName"),
+            Dimension(name="itemCategory")
+        ],
+        metrics=[
+            Metric(name="itemsViewed"),
+            Metric(name="totalRevenue"),
+            Metric(name="itemRevenue"),
+            Metric(name="purchaseToViewRate")
+        ],
+        date_ranges=[date_range]
+    )
+    response = client.run_report(request)
+    data = []
+    for row in response.rows:
+        data.append({
+            'Date Range': date_label,
+            'Product': row.dimension_values[0].value,
+            'Category': row.dimension_values[1].value,
+            'Views': int(row.metric_values[0].value),
+            'Items Sold': int(row.metric_values[1].value),
+            'Revenue': float(row.metric_values[2].value),
+            'Conversion Rate': float(row.metric_values[3].value) * 100
+        })
+    return data
+
 
 # Calculate and display summary metrics
 current_month = df_combined[df_combined['Date Range'] == start_date_1.strftime('%B %Y')]
 previous_month = df_combined[df_combined['Date Range'] == start_date_2.strftime('%B %Y')]
 
-metrics_col1, metrics_col2, metrics_col3, metrics_col4 = st.columns(4)
+metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
 with metrics_col1:
     current_revenue = current_month['Revenue'].sum()
     previous_revenue = previous_month['Revenue'].sum()
     revenue_change = ((current_revenue - previous_revenue) / previous_revenue) * 100
-    st.metric("Total Revenue", f"${current_revenue:,.2f}", f"{revenue_change:,.1f}%")
+    st.metric("Total Revenue", f"£{current_revenue:,.2f}", f"{revenue_change:,.1f}%")
 
 with metrics_col2:
-    current_units = current_month['Units Sold'].sum()
-    previous_units = previous_month['Units Sold'].sum()
+    current_units = current_month['Items Sold'].sum()
+    previous_units = previous_month['Items Sold'].sum()
     units_change = ((current_units - previous_units) / previous_units) * 100
-    st.metric("Total Units Sold", f"{current_units:,}", f"{units_change:,.1f}%")
+    st.metric("Items Sold", f"{current_units:,}", f"{units_change:,.1f}%")
+
 
 with metrics_col3:
-    current_conv = current_month['Conversion Rate'].mean()
-    previous_conv = previous_month['Conversion Rate'].mean()
-    conv_change = current_conv - previous_conv
-    st.metric("Avg Conversion Rate", f"{current_conv:.1f}%", f"{conv_change:,.1f}%")
-
-with metrics_col4:
     current_avg_order = current_revenue / current_units
     previous_avg_order = previous_revenue / previous_units
     avg_order_change = ((current_avg_order - previous_avg_order) / previous_avg_order) * 100
-    st.metric("Avg Order Value", f"${current_avg_order:.2f}", f"{avg_order_change:,.1f}%")
+    st.metric("Avg Order Value", f"£{current_avg_order:.2f}", f"{avg_order_change:,.1f}%")
 
 # Fetch top selling products
 def fetch_top_products(start_date, end_date):
@@ -118,7 +148,7 @@ def fetch_top_products(start_date, end_date):
             Dimension(name="itemCategory")
         ],
         metrics=[
-            Metric(name="itemRevenue")
+            Metric(name="itemsPurchased")
         ],
         date_ranges=[DateRange(start_date=start_date, end_date=end_date)]
     )
@@ -127,11 +157,11 @@ def fetch_top_products(start_date, end_date):
         {
             'Product': row.dimension_values[0].value,
             'Category': row.dimension_values[1].value,
-            'Revenue': float(row.metric_values[0].value)
+            'Sales': float(row.metric_values[0].value)
         }
         for row in response.rows[:10]
     ]
-    return pd.DataFrame(data).sort_values('Revenue', ascending=False)
+    return pd.DataFrame(data).sort_values('Sales', ascending=False)
 
 # Display top selling products
 df_top_products = fetch_top_products(
@@ -145,7 +175,7 @@ st.dataframe(df_top_products)
 def create_revenue_chart(df):
     return alt.Chart(df).mark_bar().encode(
         x=alt.X('Date Range:N', title='Period'),
-        y=alt.Y('sum(Revenue):Q', title='Revenue ($)'),
+        y=alt.Y('sum(Revenue):Q', title='Revenue (£)'),
         color=alt.Color('Category:N', title='Product Category')
     ).properties(
         width=400,
