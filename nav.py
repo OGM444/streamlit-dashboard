@@ -22,8 +22,8 @@ def make_sidebar():
         st.write("")
 
         if st.session_state.get("logged_in", False):
-            st.page_link("pages/about.py", label="Overview", icon=":material/account_circle:")
-            st.page_link("pages/ga4api.py", label="Performance Dashboard", icon=":material/bar_chart:")
+            st.page_link("pages/sales.py", label="Sales", icon=":material/bar_chart:")
+            st.page_link("pages/seo.py", label="SEO Performance", icon=":material/bar_chart:")
 
             st.write("")
             st.write("")
@@ -31,14 +31,14 @@ def make_sidebar():
             if st.button("Log out"):
                 logout()
 
-        elif get_current_page_name() != "streamlit_app":
+        elif get_current_page_name() != "app":
             # If anyone tries to access a secret page without being logged in,
             # redirect them to the login page
-            st.switch_page("streamlit_app.py")
+            st.switch_page("app.py")
 
 
 def logout():
     st.session_state.logged_in = False
     st.info("Logged out successfully!")
     sleep(0.5)
-    st.switch_page("streamlit_app.py")
+    st.switch_page("app.py")

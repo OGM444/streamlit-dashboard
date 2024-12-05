@@ -1,7 +1,7 @@
 import streamlit as st
 from streamlit_echarts import st_echarts
 import datetime
-from navigation import make_sidebar
+from nav import make_sidebar
 
 st.logo("assets/whd_logo.png")
 

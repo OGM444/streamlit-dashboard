@@ -1,5 +1,5 @@
 import os
-from navigation import make_sidebar
+from nav import make_sidebar
 import pandas as pd
 import streamlit as st
 import altair as alt
@@ -26,17 +26,17 @@ st.logo("assets/whd_logo.png")
 make_sidebar()
 st.title("📈 SEO Data Dashboard")
 st.divider()
-st.sidebar.header("Add your filters here👇")
+st.sidebar.header("Select Date Range here👇")
 
 # Google Analytics property ID
 
 property_id = "389980673"
 
-# Date range input
-start_date_1 = st.sidebar.date_input("Start date of current month", pd.to_datetime("2024-01-18"))
-end_date_1 = st.sidebar.date_input("End date of current month", pd.to_datetime("today"))
-start_date_2 = st.sidebar.date_input("Start date of month to compare", pd.to_datetime("2024-01-18"))
-end_date_2 = st.sidebar.date_input("End date of month to compare", pd.to_datetime("today"))
+# Date range sidebar
+start_date_current = st.sidebar.date_input("Start date of current month", pd.to_datetime("2024-01-18"))
+end_date_current = st.sidebar.date_input("End date of current month", pd.to_datetime("today"))
+start_date_compared = st.sidebar.date_input("Start date of month to compare", pd.to_datetime("2024-01-18"))
+end_date_compared = st.sidebar.date_input("End date of month to compare", pd.to_datetime("today"))
 
 # Function to fetch report data
 def fetch_ga_data(date_range, date_label):
@@ -70,16 +70,58 @@ def fetch_ga_data(date_range, date_label):
 
 # Fetch and combine data
 combined_data = fetch_ga_data(
-    DateRange(start_date=start_date_1.strftime("%Y-%m-%d"), end_date=end_date_1.strftime("%Y-%m-%d")), 
-    start_date_1.strftime('%B %Y')
+    DateRange(start_date=start_date_current.strftime("%Y-%m-%d"), end_date=end_date_current.strftime("%Y-%m-%d")), 
+    start_date_current.strftime('%B %Y')
 )
 combined_data += fetch_ga_data(
-    DateRange(start_date=start_date_2.strftime("%Y-%m-%d"), end_date=end_date_2.strftime("%Y-%m-%d")), 
-    start_date_2.strftime('%B %Y')
+    DateRange(start_date=start_date_compared.strftime("%Y-%m-%d"), end_date=end_date_compared.strftime("%Y-%m-%d")), 
+    start_date_compared.strftime('%B %Y')
 )
 
 # Create DataFrame for combined GA data
 df_combined = pd.DataFrame(combined_data)
+
+def fetch_sessions_data(start_date, end_date):
+    request = RunReportRequest(
+        property=f"properties/{property_id}",
+        dimensions=[Dimension(name="date")],
+        metrics=[Metric(name="sessions")],
+        date_ranges=[DateRange(start_date=start_date, end_date=end_date)]
+    )
+    response = client.run_report(request)
+    
+    sessions_data = [
+        {
+            'Date': pd.to_datetime(row.dimension_values[0].value),
+            'Sessions': int(row.metric_values[0].value)
+        }
+        for row in response.rows
+    ]
+    return pd.DataFrame(sessions_data)
+
+df_sessions_current = fetch_sessions_data(
+    start_date_current.strftime("%Y-%m-%d"), 
+    end_date_current.strftime("%Y-%m-%d")
+).assign(DateRange="Current Month")
+
+df_sessions_comparison = fetch_sessions_data(
+    start_date_compared.strftime("%Y-%m-%d"),
+    end_date_compared.strftime("%Y-%m-%d")
+).assign(DateRange="Comparison Month")
+
+df_sessions_combined = pd.concat([df_sessions_current, df_sessions_comparison])
+
+sessions_chart = alt.Chart(df_sessions_combined).mark_line().encode(
+    x=alt.X('Date:T', title='Date'),
+    y=alt.Y('Sessions:Q', title='Sessions'),
+    color=alt.Color('DateRange:N', title='Date Range')
+).properties(
+    width=700, height=400
+)
+
+st.subheader("Sessions Over Time")
+st.altair_chart(sessions_chart, use_container_width=True)
+
 
 # Fetch top 10 landing pages data
 request_landing_pages = RunReportRequest(
@@ -90,7 +132,7 @@ request_landing_pages = RunReportRequest(
         Metric(name="newUsers"),
         Metric(name="engagedSessions"),
     ],
-    date_ranges=[DateRange(start_date=start_date_1.strftime("%Y-%m-%d"), end_date=end_date_1.strftime("%Y-%m-%d"))],
+    date_ranges=[DateRange(start_date=start_date_current.strftime("%Y-%m-%d"), end_date=end_date_current.strftime("%Y-%m-%d"))],
 )
 response_landing_pages = client.run_report(request_landing_pages)
 top_landing_pages_data = [
@@ -165,8 +207,8 @@ def fetch_gsc_data(start_date, end_date):
     ])
 
 # Fetch and display GSC data
-df_gsc_1 = fetch_gsc_data(start_date_1.strftime("%Y-%m-%d"), end_date_1.strftime("%Y-%m-%d"))
-df_gsc_2 = fetch_gsc_data(start_date_2.strftime("%Y-%m-%d"), end_date_2.strftime("%Y-%m-%d"))
+df_gsc_1 = fetch_gsc_data(start_date_current.strftime("%Y-%m-%d"), end_date_current.strftime("%Y-%m-%d"))
+df_gsc_2 = fetch_gsc_data(start_date_compared.strftime("%Y-%m-%d"), end_date_compared.strftime("%Y-%m-%d"))
 df_GSC_combined = pd.concat([df_gsc_1.assign(DateRange="Current Month"), df_gsc_2.assign(DateRange="Comparison Month")])
 st.markdown("<h2>Google Search Console Data<h2>", unsafe_allow_html=True)
 st.subheader("Month on Month GSC Data")

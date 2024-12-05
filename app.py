@@ -1,6 +1,6 @@
 import streamlit as st
 from time import sleep
-from navigation import make_sidebar
+from nav import make_sidebar
 
 st.logo("assets/whd_logo.png")
 
@@ -18,6 +18,6 @@ if st.button("Log in", type="primary"):
         st.session_state.logged_in = True
         st.success("Logged in successfully!")
         sleep(0.5)
-        st.switch_page("pages/about.py")
+        st.switch_page("pages/sales.py")
     else:
         st.error("Incorrect username or password")
