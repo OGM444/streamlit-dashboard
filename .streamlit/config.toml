@@ -1,3 +1,7 @@
+
+[server]
+scriptFile = "app.py"
+
 [theme]
 # Primary accent color for interactive elements.
 primaryColor = "#FBB800"
